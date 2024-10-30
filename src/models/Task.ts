@@ -2,7 +2,9 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  ManyToMany,
   ManyToOne,
+  JoinTable,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -38,11 +40,12 @@ export class Task {
   @Column({ default: 'medium' })
   priority!: 'low' | 'medium' | 'high';
 
-  // Ensure assignedTo is a relation with User entity
-  @ManyToOne(() => User, { nullable: true, eager: true }) 
-  assignedTo?: User;
+  // Many-to-Many relationship to allow multiple users to be assigned
+  @ManyToMany(() => User, { eager: true })
+  @JoinTable()
+  assignedTo!: User[];
 
-  // Ensure createdBy is a ManyToOne relation with User entity
+  // Task creator (Many-to-One relationship)
   @ManyToOne(() => User, (user) => user.tasks, { eager: true })
   createdBy!: User;
 
