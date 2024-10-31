@@ -5,6 +5,7 @@ import { AppDataSource } from './database/data-source';
 import authRoutes from './routes/authRoutes';
 import taskRoutes from './routes/taskRoutes';
 import dotenv from 'dotenv';
+import { apiLimiter } from './middlewares/rateLimit';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ const app = express();
 app.use(express.json());
 
 app.use('/auth', authRoutes);
-app.use('/api', taskRoutes);
+app.use('/api', taskRoutes, apiLimiter);
 
 // Place this at the end of your routes.
 app.get('*', (req, res) => {
