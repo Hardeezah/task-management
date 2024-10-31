@@ -37,8 +37,8 @@ Ensure you have the following installed:
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd task-manager-api``
+   git clone https://github.com/Hardeezah/task-management.git
+   cd task-management``
 
 2. Install dependencies:
     ```npm install```
@@ -83,8 +83,9 @@ Ensure you have the following installed:
 
 | Endpoint       | Method | Description                                         |
 |----------------|--------|-----------------------------------------------------|
-| `/auth/register` | POST   | Register a new user                                 |
-| `/auth/login`    | POST   | Login a user and retrieve a JWT                     |
+| `/users/register` | POST   | Register a new user      
+| `/users/verify-otp` | POST   | Verify user email to create account                           |
+| `/users/login`    | POST   | Login a user and retrieve a JWT                     |
 | `/tasks`         | POST   | Create a new task (authenticated)                   |
 | `/tasks`         | GET    | Get all tasks with pagination and filters           |
 | `/tasks/:id`     | GET    | Get a task by ID                                   |
@@ -93,7 +94,8 @@ Ensure you have the following installed:
 | `/tasks/share`   | POST   | Share a task with another user by email             |
 
 ### Task Data Validation
-    Task fields such as title, description, dueDate, and priority are validated with Joi to ensure data consistency and integrity. This prevents invalid data from reaching the database and improves error handling.
+
+Task fields such as title, description, dueDate, and priority are validated with Joi to ensure data consistency and integrity. This prevents invalid data from reaching the database and improves error handling.
 
 
 
