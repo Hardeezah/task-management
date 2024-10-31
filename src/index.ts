@@ -9,11 +9,18 @@ import { apiLimiter } from './middlewares/rateLimit';
 
 dotenv.config();
 
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+
 const app = express();
+const swaggerDocument = YAML.load('./swagger.yaml');
+
+// Set up middleware for Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use(express.json());
 
-app.use('/auth', authRoutes);
-app.use('/api', taskRoutes, apiLimiter);
+app.use('/users', authRoutes);
+app.use('/', taskRoutes, apiLimiter);
 
 // Place this at the end of your routes.
 app.get('*', (req, res) => {

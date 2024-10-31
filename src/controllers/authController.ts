@@ -37,10 +37,10 @@ export const registerUser = async (req: Request, res: Response): Promise<Respons
       `otp:${email}`,
       JSON.stringify({ email, password: hashedPassword, otp }),
       'EX',
-      300 // 5 mins TTL
+      300 // 5 mins 
     );
 
-    console.log(`OTP for ${email}: ${otp}`); // Log OTP for testing purposes
+    console.log(`OTP for ${email}: ${otp}`); 
 
     // Send OTP to the user's email
     await sendOTP(email, otp);

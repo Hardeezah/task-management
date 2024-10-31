@@ -1,11 +1,11 @@
 // src/controllers/__tests__/authController.test.ts
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { AppDataSource } from './../src/database/data-source';
-import { registerUser } from './../src/controllers/authController';
-import { redisClient } from './../src/database/redisClient';
-import { sendOTP } from './../src/utils/email';
-import { User } from './../src/models/User'; // Adjust the path as necessary
+import { AppDataSource } from '../src/database/data-source';
+import { registerUser } from '../src/controllers/authController';
+import { redisClient } from '../src/database/redisClient';
+import { sendOTP } from '../src/utils/email';
+import { User } from '../src/models/User'; // Adjust the path as necessary
 
 // Mock Redis Client
 jest.mock('./../src/database/redisClient', () => ({
@@ -23,6 +23,7 @@ jest.mock('./../src/utils/email', () => ({
 // Mock bcrypt.hash to avoid actual hashing
 jest.spyOn(bcrypt, 'hash').mockImplementation(async () => 'hashedPassword');
 
+// Mock AppDataSource to provide a user repository
 jest.mock('./../src/database/data-source', () => ({
   AppDataSource: {
     getRepository: () => ({
@@ -62,7 +63,6 @@ describe('registerUser', () => {
     // Assign the mock user repository from AppDataSource
     mockUserRepository = AppDataSource.getRepository(User); // Pass the User entity
     mockUserRepository.findOneBy.mockResolvedValue(null); // Reset to null before each test
-
   });
 
   it('should return 400 if user already exists', async () => {
@@ -77,8 +77,6 @@ describe('registerUser', () => {
     expect(json).toHaveBeenCalledWith({ message: 'Account already exists.' });
   });
   
-
-
   it('should return 400 if OTP already sent', async () => {
     // Simulate OTP already existing in Redis
     (redisClient.get as jest.Mock).mockResolvedValue('123456');
@@ -115,6 +113,5 @@ describe('registerUser', () => {
 
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({ error: 'Internal server error during registration.' });
-});
-
+  });
 });

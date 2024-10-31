@@ -30,7 +30,9 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
-    "typeorm": "^0.3.17"
+    "swagger-ui-express": "^5.0.1",
+    "typeorm": "^0.3.17",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

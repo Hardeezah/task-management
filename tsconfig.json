@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "outDir": "./dist",
     "sourceMap": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"] // Ensure this is included
+    "typeRoots": ["./node_modules/@types", "./src/types"] // For types
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

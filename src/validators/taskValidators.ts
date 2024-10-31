@@ -1,6 +1,17 @@
 // src/validators/taskValidator.ts
 import Joi from 'joi';
 
+export const createUserSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.empty': 'Email is required.',
+    'string.email': 'Email must be a valid email address.',
+  }),
+  password: Joi.string().min(8).required().messages({
+    'string.empty': 'Password is required.',
+    'string.min': 'Password must be at least 8 characters long.',
+  }),
+});
+
 
 export const createTaskSchema = Joi.object({
   title: Joi.string().required().messages({
@@ -27,9 +38,7 @@ export const createTaskSchema = Joi.object({
     }),
 });
 
-
 // src/validationSchemas.ts
-
 export const updateTaskSchema = Joi.object({
   title: Joi.string().optional().messages({
     'string.base': 'Title must be a string.',
