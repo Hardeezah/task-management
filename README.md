@@ -23,7 +23,7 @@ This project is a RESTful API for managing tasks. Users can create, read, update
 3. **Rate Limiting**: Controls the number of requests a user can make in a given timeframe.
 4. **Data Validation**: Uses Joi to validate incoming request data.
 5. **Caching**: Uses Upstash Redis to cache task queries for improved performance.
-6. **API Documentation**: Access the [Swagger Documentation](./src/index.html) to explore all available endpoints.
+6. **API Documentation**: Access the [Swagger Documentation](https://discreet-moth.static.domains/) to explore all available endpoints.
 
 ## Getting Started
 
