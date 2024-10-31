@@ -278,5 +278,77 @@ paths:
         '500':
           description: Internal Server Error
 
+  /tasks/share:
+    post:
+      summary: Share a task with another user by email
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                taskId:
+                  type: integer
+                  example: 1
+                  description: ID of the task to be shared
+                email:
+                  type: string
+                  example: user@example.com
+                  description: Email of the user with whom the task will be shared
+      responses:
+        '200':
+          description: Task shared successfully, email notification sent and user email assigned to the task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Task shared successfully
+        '400':
+          description: Bad request, required fields are missing or user already assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: taskId and email are required
+        '403':
+          description: Forbidden, user is not authorized to share this task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: You are not authorized to share this task
+        '404':
+          description: Not found, task or user does not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Task not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to send email notification
+
 security:
   - bearerAuth: []

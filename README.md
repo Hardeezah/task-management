@@ -23,7 +23,7 @@ This project is a RESTful API for managing tasks. Users can create, read, update
 3. **Rate Limiting**: Controls the number of requests a user can make in a given timeframe.
 4. **Data Validation**: Uses Joi to validate incoming request data.
 5. **Caching**: Uses Upstash Redis to cache task queries for improved performance.
-6. **API Documentation**: Access the [Swagger Documentation](http://localhost:5000/api-docs/#/) to explore all available endpoints.
+6. **API Documentation**: Access the [Swagger Documentation](./src/index.html) to explore all available endpoints.
 
 ## Getting Started
 
@@ -75,23 +75,25 @@ Ensure you have the following installed:
  The API will be accessible at http://localhost:5000.
 
 ### Running Tests
-To run the unit tests:
+    To run the unit tests:
 
-```npm test```
+    ```npm test```
 
 ### API Endpoints
-Endpoint	Method	Description
-/auth/register	POST	Register a new user
-/auth/login	POST	Login a user and retrieve a JWT
-/tasks	POST	Create a new task (authenticated)
-/tasks	GET	Get all tasks with pagination and filters
-/tasks/:id	GET	Get a task by ID
-/tasks/:id	PUT	Update a task by ID (must be task owner or assigned)
-/tasks/:id	DELETE	Delete a task by ID (must be task owner or assigned)
-/tasks/share	POST	Share a task with another user by email
+
+| Endpoint       | Method | Description                                         |
+|----------------|--------|-----------------------------------------------------|
+| `/auth/register` | POST   | Register a new user                                 |
+| `/auth/login`    | POST   | Login a user and retrieve a JWT                     |
+| `/tasks`         | POST   | Create a new task (authenticated)                   |
+| `/tasks`         | GET    | Get all tasks with pagination and filters           |
+| `/tasks/:id`     | GET    | Get a task by ID                                   |
+| `/tasks/:id`     | PUT    | Update a task by ID (must be task owner or assigned)|
+| `/tasks/:id`     | DELETE | Delete a task by ID (must be task owner or assigned)|
+| `/tasks/share`   | POST   | Share a task with another user by email             |
 
 ### Task Data Validation
-Task fields such as title, description, dueDate, and priority are validated with Joi to ensure data consistency and integrity. This prevents invalid data from reaching the database and improves error handling.
+    Task fields such as title, description, dueDate, and priority are validated with Joi to ensure data consistency and integrity. This prevents invalid data from reaching the database and improves error handling.
 
 
 
