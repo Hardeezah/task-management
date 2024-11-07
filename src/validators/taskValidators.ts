@@ -68,3 +68,13 @@ export const updateTaskSchema = Joi.object({
       'any.only': 'Status must be one of pending, in-progress, or completed.',
     }),
 });
+
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required().messages({
+    'string.empty': 'current password is required.',
+  }),
+  newPassword: Joi.string().min(8).required().messages({
+    'string.empty': 'New paasowrd is required.',
+    'string.min': 'Password must be at least 8 characters long.',
+  }),
+});
