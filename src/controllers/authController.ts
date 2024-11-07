@@ -237,11 +237,7 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ error: 'Current password is incorrect.' });
-    }
-
-    if(currentPassword === user.password) {
-      return res.status(400).json({ error: 'Current password cannot be the same as the new password.' });
-    }      
+    }   
 
     // Hash the new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);

@@ -71,10 +71,17 @@ export const updateTaskSchema = Joi.object({
 
 export const changePasswordSchema = Joi.object({
   currentPassword: Joi.string().required().messages({
-    'string.empty': 'current password is required.',
+    'string.empty': 'Current password is required.',
   }),
   newPassword: Joi.string().min(8).required().messages({
-    'string.empty': 'New paasowrd is required.',
+    'string.empty': 'New password is required.',
     'string.min': 'Password must be at least 8 characters long.',
   }),
+}).custom((value, helpers) => {
+  if (value.currentPassword === value.newPassword) {
+    return helpers.error('password.match');
+  }
+  return value;
+}).messages({
+  'password.match': 'New password must be different from the current password.',
 });
