@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
 import { createTask } from '../src/controllers/taskController';
 import { AppDataSource } from '../src/database/data-source';
-import { Task } from '../src/models/Task';
 import { redisClient } from '../src/database/redisClient';
 
-
+// Mock dependencies
 jest.mock('./../src/database/data-source', () => ({
   AppDataSource: {
     getRepository: jest.fn(),
@@ -17,24 +16,43 @@ jest.mock('./../src/database/redisClient', () => ({
   },
 }));
 
+// Define a User type for the request
+interface User {
+  id: string;
+  email: string;
+}
+
+// Extend the Request interface for the test
+interface AuthenticatedRequest extends Request {
+  user?: User;
+}
+
 describe('createTask', () => {
-  let req: Partial<Request>;
+  let req: Partial<AuthenticatedRequest>;
   let res: Partial<Response>;
   let json: jest.Mock;
   let status: jest.Mock;
   let taskRepository: any;
 
   beforeEach(() => {
+    // Mock response methods
     json = jest.fn();
     status = jest.fn(() => ({ json })) as any;
     res = { status, json };
-    req = { body: {}, user: { id: 'user-id', email: 'test@example.com' } }; // Now works without error
 
+    // Define mock request with user
+    req = { 
+      body: {}, 
+      user: { id: 'user-id', email: 'test@example.com' },
+    };
+
+    // Mock repository methods
     taskRepository = {
       create: jest.fn(),
       save: jest.fn(),
     };
 
+    // Ensure AppDataSource.getRepository returns our taskRepository mock
     (AppDataSource.getRepository as jest.Mock).mockReturnValue(taskRepository);
   });
 
@@ -80,7 +98,7 @@ describe('createTask', () => {
     });
 
     expect(taskRepository.save).toHaveBeenCalledWith(mockTask);
-    expect(redisClient.del).toHaveBeenCalledWith(`user_tasks:${req.user.id}`);
+    expect(redisClient.del).toHaveBeenCalledWith(`user_tasks:${req.user!.id}`);
     expect(status).toHaveBeenCalledWith(201);
     expect(json).toHaveBeenCalledWith(mockTask);
   });
