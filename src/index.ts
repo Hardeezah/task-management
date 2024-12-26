@@ -4,6 +4,7 @@ import 'reflect-metadata';
 import { AppDataSource } from './database/data-source';
 import authRoutes from './routes/authRoutes';
 import taskRoutes from './routes/taskRoutes';
+import userRoutes from './routes/userRoutes';
 import dotenv from 'dotenv';
 import { apiLimiter } from './middlewares/rateLimit';
 
@@ -21,6 +22,7 @@ app.use(express.json());
 
 app.use('/users', authRoutes);
 app.use('/', taskRoutes, apiLimiter);
+app.use('/api', userRoutes);
 
 // Place this at the end of your routes.
 app.get('*', (req, res) => {

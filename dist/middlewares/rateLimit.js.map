@@ -1,0 +1,1 @@
+{"version":3,"file":"rateLimit.js","sourceRoot":"","sources":["../../src/middlewares/rateLimit.ts"],"names":[],"mappings":";;;;;;AAAA,+BAA+B;AAC/B,4EAA2C;AAE9B,QAAA,UAAU,GAAG,IAAA,4BAAS,EAAC;IAClC,QAAQ,EAAE,EAAE,GAAG,EAAE,GAAG,IAAI,EAAE,aAAa;IACvC,GAAG,EAAE,GAAG,EAAE,6CAA6C;IACvD,OAAO,EAAE;QACP,OAAO,EAAE,yDAAyD;KACnE;IACD,OAAO,EAAE,IAAI,EAAE,6CAA6C;CAC7D,CAAC,CAAC"}

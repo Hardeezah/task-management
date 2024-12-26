@@ -7,17 +7,25 @@ import {
   verifyPasswordResetOTP,
   updatePassword,
   changePassword,
+  googleAuth,
 
 } from '../controllers/authController';
 import { validateRequest } from '../middlewares/validateRequest';
 import { changePasswordSchema } from '../validators/taskValidators';
-import { log } from 'node:console';
 
 const router = express.Router();
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
     await registerUser(req, res);
+  } catch (error) {
+    // Handle error
+  }
+});
+
+router.post('/auth/google', async (req: Request, res: Response) => {
+  try {
+    await googleAuth(req, res);
   } catch (error) {
     // Handle error
   }

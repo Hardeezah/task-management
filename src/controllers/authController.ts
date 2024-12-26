@@ -6,7 +6,8 @@ import { sendOTP } from '../utils/email';
 import { generateOTP } from '../utils/otp';
 import { AppDataSource } from '../database/data-source';
 import { User } from '../models/User';
-import { log } from 'console';
+import { OAuth2Client } from 'google-auth-library';
+
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -37,8 +38,7 @@ export const registerUser = async (req: Request, res: Response): Promise<Respons
     await redisClient.set(
       `otp:${email}`,
       JSON.stringify({ email, password: hashedPassword, otp }),
-      'EX',
-      300 // 5 mins 
+      { ex: 900 } // 5 mins 
     );
 
     console.log(`OTP for ${email}: ${otp}`); 
@@ -54,22 +54,34 @@ export const registerUser = async (req: Request, res: Response): Promise<Respons
 };
 
 // Verify OTP and Create User
-export const verifyOTPAndCreateUser = async (req: Request, res: Response): Promise<Response> => {
+/* export const verifyOTPAndCreateUser = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { email, otp } = req.body;
 
     const userData = await redisClient.get(`otp:${email}`);
+    console.log('Raw userData from Redis:', userData);
+    // Add a null check to handle the absence of data
     if (!userData) {
       console.error(`OTP expired or missing for ${email}`);
       return res.status(400).json({ error: 'OTP expired or invalid.' });
     }
-
+    
+    // TypeScript expects a string for JSON.parse; we cast userData as a string
+    //const parsedData = JSON.parse(userData as string);
+    if (typeof userData !== 'string') {
+      console.error(`Invalid data format for ${email}. Expected a string.`);
+      return res.status(500).json({ error: 'Invalid data format received.' });
+    }
+    
     const parsedData = JSON.parse(userData);
+    
+    
+    // Validate the OTP
     if (parsedData.otp !== otp) {
       console.error(`Invalid OTP provided for ${email}`);
       return res.status(400).json({ error: 'Invalid OTP.' });
     }
-
+    
     const user = userRepository.create({
       email: parsedData.email,
       password: parsedData.password,
@@ -79,6 +91,49 @@ export const verifyOTPAndCreateUser = async (req: Request, res: Response): Promi
     await redisClient.del(`otp:${email}`); // Clean up Redis entry
 
     console.log(`User ${email} registered successfully.`);
+    return res.status(201).json({ message: 'User registered successfully.' });
+  } catch (error) {
+    console.error('Error during OTP verification:', error);
+    return res.status(500).json({ error: 'Internal server error during OTP verification.' });
+  }
+}; */
+
+export const verifyOTPAndCreateUser = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { email, otp } = req.body;
+
+    // Retrieve data from Redis
+    const userData = await redisClient.get(`otp:${email}`);
+    console.log('Raw userData from Redis:', userData);
+
+    // Handle both string and object formats
+    let parsedData;
+    if (typeof userData === 'string') {
+      parsedData = JSON.parse(userData);
+    } else if (typeof userData === 'object' && userData !== null) {
+      parsedData = userData;
+    } else {
+      console.error(`Invalid data format for ${email}:`, userData);
+      return res.status(500).json({ error: 'Invalid data format received.' });
+    }
+
+    // Validate the OTP
+    if (parsedData.otp !== otp) {
+      console.error(`Invalid OTP provided for ${email}`);
+      return res.status(400).json({ error: 'Invalid OTP.' });
+    }
+
+    // Create and save the user
+    const user = userRepository.create({
+      email: parsedData.email,
+      password: parsedData.password,
+    });
+    await userRepository.save(user);
+
+    // Clean up Redis
+    await redisClient.del(`otp:${email}`);
+    console.log(`User ${email} registered successfully.`);
+
     return res.status(201).json({ message: 'User registered successfully.' });
   } catch (error) {
     console.error('Error during OTP verification:', error);
@@ -97,7 +152,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
       return res.status(400).json({ error: 'Invalid email or password.' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = user.password && await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       console.error(`Login failed for ${email}: Invalid password.`);
       return res.status(400).json({ error: 'Invalid email or password.' });
@@ -136,7 +191,7 @@ export const initiatePasswordReset = async (req: Request, res: Response): Promis
 
     // Generate OTP and store in Redis with a 10-minute TTL
     const otp = generateOTP();
-    await redisClient.set(`password-reset-otp:${email}`, JSON.stringify({ otp }), 'EX', 600); // 10 mins TTL
+    await redisClient.set(`password-reset-otp:${email}`, JSON.stringify({ otp }), { ex: 600 }); // 10 mins TTL
     console.log(redisClient)
     console.log(`OTP for ${email}: ${otp}`);
     await sendOTP(email, otp);
@@ -159,14 +214,14 @@ export const verifyPasswordResetOTP = async (req: Request, res: Response): Promi
       return res.status(400).json({ error: 'OTP expired or invalid.' });
     }
 
-    const parsedData = JSON.parse(otpData);
+    const parsedData = JSON.parse(otpData as string);
     if (parsedData.otp !== otp) {
       return res.status(400).json({ error: 'Invalid OTP.' });
     }
 
     // Set verified flag in Redis after successful OTP verification and delete OTP
     await redisClient.del(`password-reset-otp:${email}`);
-    await redisClient.set(`verified:${email}`, JSON.stringify({ verified: true }), 'EX', 600); // Verified for 10 mins
+    await redisClient.set(`verified:${email}`, JSON.stringify({ verified: true }), {ex: 600}); // Verified for 10 mins
     console.log(redisClient)
     return res.status(200).json({ message: 'OTP verified successfully. You may now reset your password.' });
   } catch (error) {
@@ -187,7 +242,7 @@ export const updatePassword = async (req: Request, res: Response): Promise<Respo
       return res.status(400).json({ message: 'Email not verified or verification expired. Please request a new OTP.' });
     }
 
-    const parsedData = JSON.parse(verificationData);
+    const parsedData = JSON.parse(verificationData as string);
     if (!parsedData.verified) {
       return res.status(400).json({ message: 'Email verification is required to reset password.' });
     }
@@ -234,11 +289,11 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
     }
 
     // Check if the current password matches the stored password
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isPasswordValid = user.password && await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Current password is incorrect.' });
+      return res.status(400).json({ error: 'Current password is incorrect or not set.' });
     }
-
+    
     if(currentPassword === user.password) {
       return res.status(400).json({ error: 'Current password cannot be the same as the new password.' });
     }      
@@ -256,4 +311,77 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
     return res.status(500).json({ error: 'Internal server error during password change.' });
   }
 };
+
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/* export const googleAuth = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+
+    console.log("Received Google token:", token);
+    const parts = token.split(".");
+    console.log("Token Parts:", parts);
+    // Verify the token with Google
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ message: 'Invalid Google token.' });
+    }
+
+    // Extract user details from the Google payload
+    const { email, sub: googleId, name } = payload;
+
+    // Check if the user already exists
+    let user = await userRepository.findOneBy({ email });
+
+    // Register the user if they do not exist
+    if (!user) {
+      user = userRepository.create({
+        email,
+        password: '', // Password not required for Google-authenticated users
+        googleId,
+      });
+      await userRepository.save(user);
+    }
+
+    // Generate a JWT for the authenticated user
+    const jwtToken = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({ token: jwtToken, message: 'Login successful.' });
+  } catch (error) {
+    console.error('Error with Google authentication:', error);
+    res.status(500).json({ error: 'Internal server error during Google authentication.' });
+  }
+}; */
+
+export const googleAuth = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(400).json({ error: 'ID token is required' });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    // Process user data from payload
+    return res.status(200).json({ message: 'Authentication successful', user: payload });
+  } catch (error) {
+    console.error('Error with Google authentication:', error);
+    return res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
 

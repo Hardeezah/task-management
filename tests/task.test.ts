@@ -1,28 +1,27 @@
-import { Request, Response } from 'express';
+ import { Request, Response } from 'express';
 import { createTask } from '../src/controllers/taskController';
 import { AppDataSource } from '../src/database/data-source';
 import { redisClient } from '../src/database/redisClient';
+import { Task } from '../src/models/Task';
 
 // Mock dependencies
-jest.mock('./../src/database/data-source', () => ({
+jest.mock('../src/database/data-source', () => ({
   AppDataSource: {
     getRepository: jest.fn(),
   },
 }));
 
-jest.mock('./../src/database/redisClient', () => ({
+jest.mock('../src/database/redisClient', () => ({
   redisClient: {
     del: jest.fn(),
   },
 }));
 
-// Define a User type for the request
 interface User {
   id: string;
   email: string;
 }
 
-// Extend the Request interface for the test
 interface AuthenticatedRequest extends Request {
   user?: User;
 }
@@ -40,20 +39,23 @@ describe('createTask', () => {
     status = jest.fn(() => ({ json })) as any;
     res = { status, json };
 
-    // Define mock request with user
-    req = { 
-      body: {}, 
+    // Mock request
+    req = {
+      body: {},
       user: { id: 'user-id', email: 'test@example.com' },
     };
 
-    // Mock repository methods
+    // Mock taskRepository methods
     taskRepository = {
       create: jest.fn(),
       save: jest.fn(),
     };
 
-    // Ensure AppDataSource.getRepository returns our taskRepository mock
+    // Mock AppDataSource.getRepository to return taskRepository
     (AppDataSource.getRepository as jest.Mock).mockReturnValue(taskRepository);
+
+    // Log to verify mock setup
+    console.log('Mocked taskRepository:', taskRepository);
   });
 
   afterEach(() => {
@@ -88,6 +90,7 @@ describe('createTask', () => {
 
     await createTask(req as Request, res as Response);
 
+    expect(AppDataSource.getRepository).toHaveBeenCalledWith(Task);
     expect(taskRepository.create).toHaveBeenCalledWith({
       title: 'New Task',
       description: 'Task description',
@@ -96,7 +99,6 @@ describe('createTask', () => {
       createdBy: req.user,
       assignedTo: [req.user],
     });
-
     expect(taskRepository.save).toHaveBeenCalledWith(mockTask);
     expect(redisClient.del).toHaveBeenCalledWith(`user_tasks:${req.user!.id}`);
     expect(status).toHaveBeenCalledWith(201);
@@ -117,6 +119,7 @@ describe('createTask', () => {
 
     await createTask(req as Request, res as Response);
 
+    expect(AppDataSource.getRepository).toHaveBeenCalledWith(Task);
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({ message: 'Internal Server Error' });
   });

@@ -11,14 +11,21 @@ const taskRepository = AppDataSource.getRepository(Task);
 // Create Task Handler
 export const createTask = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Request received:', { body: req.body, user: req.user });
+
+    console.log('Response received:', res.statusCode, res.getHeaders());
+    
     const user = req.user; // Assuming authMiddleware sets req.user
     if (!user) {
+      console.log('Unauthorized access attempt');
       res.status(401).json({ message: 'Unauthorized' });
+      console.log('Response sent:', res.statusCode, res.getHeaders());
       return;
     }
 
     const { title, description, dueDate, priority } = req.body;
 
+    console.log('Before task Creation Response sent:', res.statusCode, res.getHeaders());
     // Create a new task instance
     const task = taskRepository.create({
       title,
@@ -28,19 +35,25 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
       createdBy: user,
       assignedTo: [user], // Assigned to the creator by default (array of users)
     });
+    //console.log('Task created:', task);
 
     // Save the task to the database
     await taskRepository.save(task);
+    //console.log('Task saved:', task);
 
-     // Invalidate cache for the user's tasks
+    // Invalidate cache for the user's tasks
     await redisClient.del(`user_tasks:${user.id}`);
+    console.log(`Cache invalidated for user_tasks:${user.id}`);
 
     res.status(201).json(task);
+    console.log('Response sent:', res.statusCode, res.getHeaders());
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+    console.log('Response sent:', res.statusCode, res.getHeaders());
   }
 };
+
 // Get All Tasks with Pagination
 
 // Get All Tasks with Pagination and Filters
@@ -59,7 +72,7 @@ export const getAllTasksWithFilters = async (req: Request, res: Response): Promi
     const cachedTasks = await redisClient.get(cacheKey);
 
     if (cachedTasks) {
-      res.status(200).json(JSON.parse(cachedTasks));
+      res.status(200).json(JSON.parse(cachedTasks as string));
       return; // Add return to prevent further execution
     }
 
@@ -85,7 +98,7 @@ export const getAllTasksWithFilters = async (req: Request, res: Response): Promi
       .getManyAndCount();
 
     const result = { total, page, limit, tasks };
-    await redisClient.set(cacheKey, JSON.stringify(result), 'EX', 3600);
+    await redisClient.set(cacheKey, JSON.stringify(result), {ex: 3600});
 
     res.status(200).json(result);
   } catch (error) {
@@ -267,7 +280,7 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
     }
 
     const cachedTask = await redisClient.get(`task:${taskId}`);
-    const task = cachedTask ? JSON.parse(cachedTask) : await taskRepository.findOne({ where: { id: taskId } });
+    const task = cachedTask ? JSON.parse(cachedTask as string) : await taskRepository.findOne({ where: { id: taskId } });
 
     if (!task) {
       res.status(404).json({ error: 'Task not found' });

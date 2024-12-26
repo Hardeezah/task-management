@@ -20,8 +20,11 @@ import { Task } from './Task';
     @Column({ unique: true, nullable: true })
     username!: string;
   
-    @Column()
-    password!: string;
+    @Column({ nullable: true }) // Allow password to be null for Google-authenticated users
+    password?: string;
+
+    @Column({ nullable: true, unique: true }) // Make googleId optional
+    googleId?: string;
   
     @CreateDateColumn()
     createdAt!: Date;

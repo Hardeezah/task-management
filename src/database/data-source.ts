@@ -10,12 +10,16 @@ dotenv.config();
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST,
+  url: process.env.DATABASE_URL,
+  /* host: process.env.DATABASE_URL,
   port: Number(process.env.DB_PORT),
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME, */
   entities: [User, Task],
-  synchronize: true, // Sync models with the database, for dev only
-  logging: true,
+  synchronize: process.env.NODE_ENV !== 'production', // Avoid syncing in prod
+  logging: process.env.NODE_ENV === 'development',
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
