@@ -90,11 +90,8 @@ export class DriverUtils {
      * @return An alias that is no longer than the divers max alias length.
      */
     static buildAlias({ maxAliasLength }, buildOptions, ...alias) {
-        const newAlias = alias.length === 1
-            ? alias[0]
-            : alias.join(buildOptions && buildOptions.joiner
-                ? buildOptions.joiner
-                : "_");
+        const joiner = buildOptions && buildOptions.joiner ? buildOptions.joiner : "_";
+        let newAlias = alias.length === 1 ? alias[0] : alias.join(joiner);
         if (maxAliasLength &&
             maxAliasLength > 0 &&
             newAlias.length > maxAliasLength) {

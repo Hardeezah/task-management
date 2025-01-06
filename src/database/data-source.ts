@@ -2,7 +2,7 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { User } from '../models/User';
-import { Task } from '../models/Task';
+import { Tag, Task } from '../models/Task';
 import dotenv from 'dotenv';
 
 
@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME, */
-  entities: [User, Task],
+  entities: [User, Task, Tag],
   synchronize: process.env.NODE_ENV !== 'production', // Avoid syncing in prod
   logging: process.env.NODE_ENV === 'development',
   ssl: {

@@ -57,7 +57,7 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
 // Get All Tasks with Pagination
 
 // Get All Tasks with Pagination and Filters
-export const getAllTasksWithFilters = async (req: Request, res: Response): Promise<void> => {
+/* export const getAllTasksWithFilters = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user; // Assuming authMiddleware sets req.user
     if (!user) {
@@ -99,6 +99,72 @@ export const getAllTasksWithFilters = async (req: Request, res: Response): Promi
 
     const result = { total, page, limit, tasks };
     await redisClient.set(cacheKey, JSON.stringify(result), {ex: 3600});
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}; */
+export const getAllTasksWithFilters = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user; // Assuming authMiddleware sets req.user
+    if (!user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 100);
+
+    const cacheKey = `user_tasks:${user.id}:page_${page}:limit_${limit}`;
+    const cachedTasks = await redisClient.get(cacheKey);
+
+    if (cachedTasks) {
+      try {
+        // Ensure the cached data is a valid JSON string
+        const parsedTasks = JSON.parse(cachedTasks as string);
+        res.status(200).json(parsedTasks);
+        return;
+      } catch (parseError) {
+        console.error('Error parsing cached tasks:', parseError);
+        // Optionally, clear the cache if it's corrupted
+        await redisClient.del(cacheKey);
+      }
+    }
+
+    const { status, priority, tags } = req.query;
+
+    const query = taskRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('task.createdBy', 'createdBy')
+      .leftJoinAndSelect('task.subtasks', 'subtask') // Ensure subtasks are included within the task
+      .where('createdBy.id = :userId', { userId: user.id }) // Task created by the user
+      .orWhere('assignedTo.id = :userId', { userId: user.id }); // Or assigned to the user
+
+    if (status) query.andWhere('task.status = :status', { status });
+    if (priority) query.andWhere('task.priority = :priority', { priority });
+    if (tags) {
+      const tagList = (tags as string).split(',');
+      query.andWhere('task.tags && ARRAY[:...tags]', { tags: tagList });
+    }
+
+    const [tasks, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('task.createdAt', 'DESC')
+      .getManyAndCount();
+
+    // If necessary, you can modify or filter the subtasks here
+    tasks.forEach(task => {
+      task.subtasks = task.subtasks || []; // Ensure subtasks exist for each task
+    });
+
+    const result = { total, page, limit, tasks };
+
+    // Cache the result
+    await redisClient.set(cacheKey, JSON.stringify(result), { ex: 3600 });
 
     res.status(200).json(result);
   } catch (error) {
@@ -330,5 +396,163 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
 };
 
 
+// Create Subtask Handler
+// Create Subtask Handler
+export const createSubtask = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user; // Assuming authMiddleware sets req.user
+    if (!user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    // Destructure the data from the request body
+    const { parentTaskId, title, description, dueDate, priority } = req.body;
+
+    // Validate the required fields
+    if (!parentTaskId || !title || !description || !dueDate || !priority) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    // Find the parent task
+    const parentTask = await taskRepository.findOne({
+      where: { id: parentTaskId },
+      relations: ['assignedTo', 'createdBy'],
+    });
+
+    if (!parentTask) {
+      res.status(404).json({ error: 'Parent task not found' });
+      return;
+    }
+
+    // Check if the user has permission to create a subtask for this parent task
+    if (parentTask.createdBy.email !== user.email && !parentTask.assignedTo.some(u => u.email === user.email)) {
+      res.status(403).json({ error: 'You are not authorized to create a subtask for this task' });
+      return;
+    }
+
+    // Create the subtask instance
+    const subtask = taskRepository.create({
+      title,
+      description,
+      dueDate,
+      priority,
+      createdBy: user,
+      assignedTo: parentTask.assignedTo, // Inherit the same assigned users (you can adjust this as needed)
+      parentTask: parentTask, // Set the parent task relationship
+    });
+
+    // Save the subtask to the database
+    await taskRepository.save(subtask);
+
+    // Invalidate cache for the user's tasks
+    await redisClient.del(`user_tasks:${user.id}`);
+    console.log(`Cache invalidated for user_tasks:${user.id}`);
+
+    res.status(201).json(subtask);
+  } catch (error) {
+    console.error('Error creating subtask:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Delete Subtask by ID
+export const deleteSubtask = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { taskId, subtaskId } = req.params; // Assuming taskId and subtaskId are passed as params
+    const user = req.user; // Assuming authMiddleware sets req.user
+
+    if (!user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    // Find the task
+    const task = await taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['assignedTo', 'createdBy', 'subtasks'], // Include subtasks in the relations
+    });
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found' });
+      return;
+    }
+
+    // Check if the user is either the creator or assigned to the task
+    if (task.createdBy.email !== user.email && !task.assignedTo.some(u => u.email === user.email)) {
+      res.status(403).json({ error: 'Forbidden: You do not have permission to delete this subtask' });
+      return;
+    }
+
+    // Find the subtask to delete
+    const subtaskIndex = task.subtasks.findIndex(subtask => subtask.id === subtaskId);
+
+    if (subtaskIndex === -1) {
+      res.status(404).json({ error: 'Subtask not found' });
+      return;
+    }
+
+    // Remove the subtask from the task's subtasks array
+    task.subtasks.splice(subtaskIndex, 1);
+
+    // Save the updated task
+    await taskRepository.save(task);
+
+    // Invalidate cache for the user's tasks
+    await redisClient.del(`user_tasks:${user.id}`);
+
+    res.status(204).send(); // No content response
+  } catch (error) {
+    console.error('Error deleting subtask:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Fetch All Subtasks for a Task
+/* export const getSubtasks = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user; // Assuming authMiddleware sets req.user
+    if (!user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const { taskId } = req.params;
+
+    // Check cache first
+    const cacheKey = `task_subtasks:${taskId}`;
+    const cachedSubtasks = await redisClient.get(cacheKey);
+
+    if (cachedSubtasks) {
+      res.status(200).json(JSON.parse(cachedSubtasks));
+      return;
+    }
+
+    // Find the parent task
+    const parentTask = await taskRepository.findOne({
+      where: { id: taskId },
+    });
+
+    if (!parentTask) {
+      res.status(404).json({ message: 'Task not found' });
+      return;
+    }
+
+    // Fetch all subtasks for the given parent task
+    const subtasks = await taskRepository.find({
+      where: { parentTask: { id: taskId } },
+      relations: ['createdBy', 'assignedTo'],
+    });
+
+    // Cache the subtasks
+    await redisClient.set(cacheKey, JSON.stringify(subtasks), { ex: 3600 });
+
+    res.status(200).json(subtasks);
+  } catch (error) {
+    console.error('Error fetching subtasks:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+}; */
   
   
